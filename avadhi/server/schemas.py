@@ -3,6 +3,7 @@ avadhi/server/schemas.py — Request/response models for Agent Arena webhook.
 """
 from __future__ import annotations
 
+from typing import Any
 from pydantic import BaseModel, Field
 
 
@@ -16,19 +17,19 @@ class WebhookPayload(BaseModel):
 
 class TaskDetails(BaseModel):
     """Task details fetched from Agent Arena."""
-    id: str = ""
-    taskId: str = ""
-    projectRepo: str = ""
-    title: str = ""
-    description: str = ""
-    bounty: str = ""
-    status: str = ""
-    selectedBranch: str = ""
-    selectedFiles: list[str] = Field(default_factory=list)
-    selectedDocs: list[str] = Field(default_factory=list)
-    additionalLinks: list[str] = Field(default_factory=list)
-    additionalDocs: list[str] = Field(default_factory=list)
-    qaResponses: list[dict] = Field(default_factory=list)
+    id: Any = ""
+    taskId: Any = ""
+    projectRepo: Any = ""
+    title: Any = ""
+    description: Any = ""
+    bounty: Any = ""
+    status: Any = ""
+    selectedBranch: Any = ""
+    selectedFiles: Any = None
+    selectedDocs: Any = None
+    additionalLinks: Any = None
+    additionalDocs: Any = None
+    qaResponses: Any = None
 
 
 class Finding(BaseModel):

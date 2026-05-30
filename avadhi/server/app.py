@@ -66,6 +66,16 @@ def _get_webhook_token() -> str:
     return token
 
 
+@app.get("/")
+def index():
+    return {
+        "status": "running",
+        "service": "Avadhi Agent Arena Webhook Server",
+        "health_check": "/health",
+        "webhook_endpoint": "/webhook/audit"
+    }
+
+
 @app.get("/health")
 def health():
     active = {tid: t.is_alive() for tid, t in _active_tasks.items()}
@@ -87,6 +97,11 @@ def webhook_audit(
 
     task_id = payload.task_id
     logger.info("Received webhook for task %s", task_id)
+
+    # Handle ping / test requests
+    if not task_id or task_id.lower() in ("test", "ping", "test-task", "dummy") or not payload.task_repository_url:
+        logger.info("Received test/ping webhook from Agent Arena")
+        return {"status": "accepted", "message": "Test webhook connection successful", "task_id": task_id}
 
     # Check if task is already being processed
     existing = _active_tasks.get(task_id)

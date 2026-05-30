@@ -8,10 +8,10 @@ from pydantic import BaseModel, Field
 
 class WebhookPayload(BaseModel):
     """Incoming webhook payload from Agent Arena."""
-    task_id: str
-    task_repository_url: str
-    task_details_url: str
-    post_findings_url: str
+    task_id: str = ""
+    task_repository_url: str = ""
+    task_details_url: str = ""
+    post_findings_url: str = ""
 
 
 class TaskDetails(BaseModel):

@@ -24,4 +24,4 @@ COPY . .
 
 EXPOSE ${PORT:-8000}
 
-CMD python -m avadhi serve --port ${PORT:-8000}
+CMD ["/bin/sh", "-c", "python -m avadhi serve --port ${PORT:-8000}"]

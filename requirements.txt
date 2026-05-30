@@ -1,0 +1,45 @@
+# ── Avadhi Core Requirements ──────────────────────────────────────────────────
+
+# ── LLM Orchestration & Agents ────────────────────────────────────────────────
+langgraph>=0.4.0
+langchain-core>=0.3.52
+langchain-openai>=0.3.12
+langchain-anthropic>=0.3.0
+langchain-text-splitters>=0.3.8
+langchain-voyageai>=0.1.5
+
+# ── Static Analysis (Solidity) ────────────────────────────────────────────────
+slither-analyzer>=0.10.0
+solc-select>=1.0.0
+
+# ── Database & RAG ────────────────────────────────────────────────────────────
+asyncpg>=0.30.0
+pgvector>=0.3.6
+voyageai>=0.1.0
+openai>=1.0.0
+numpy>=1.24.0
+
+# ── Infrastructure & Observability ────────────────────────────────────────────
+langfuse>=2.0.0
+networkx>=3.2
+pydantic>=2.0.0
+python-dotenv>=1.1.0
+tenacity>=9.1.0
+
+# ── Web Server (Agent Arena) ─────────────────────────────────────────────────
+fastapi>=0.115.0
+uvicorn>=0.34.0
+httpx>=0.28.0
+
+# ── CLI & UX ──────────────────────────────────────────────────────────────────
+typer>=0.9.0
+click>=8.0.0
+rich>=13.9.0
+tqdm>=4.67.0
+
+# ── Document Processing (Ingestion) ───────────────────────────────────────────
+PyMuPDF>=1.25.0
+beautifulsoup4>=4.13.0
+markdownify>=1.1.0
+chardet>=5.2.0
+aiofiles>=24.1.0

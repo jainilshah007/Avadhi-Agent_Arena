@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: avadhi-agent
+    runtime: docker
+    plan: standard
+    healthCheckPath: /health
+    envVars:
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: AGENTARENA_API_KEY
+        sync: false
+      - key: WEBHOOK_AUTH_TOKEN
+        sync: false

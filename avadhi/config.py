@@ -22,27 +22,52 @@ ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY") or os.getenv("CLAUDE_API_KEY"
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 
 # ── LLM ──────────────────────────────────────────────────────────────────────
-# MODEL = os.getenv("AVADHI_MODEL", "claude-sonnet-4-6")
-MODEL = os.getenv("AVADHI_MODEL", "gpt-4o")
+# Single global override (backwards-compatible). When set, all tasks use this model.
+MODEL = os.getenv("AVADHI_MODEL", "")
 
+# Per-tier model selection (used when AVADHI_MODEL is not set)
+DEFAULT_MODEL  = os.getenv("AVADHI_DEFAULT_MODEL",  "gpt-4o")           # low-bounty / test
+PREMIUM_MODEL  = os.getenv("AVADHI_PREMIUM_MODEL",  "claude-opus-4-5")  # high-bounty
+FALLBACK_MODEL = os.getenv("AVADHI_FALLBACK_MODEL", "gpt-4o")           # rate-limit fallback
+
+# Dollar threshold above which the premium model is used
+try:
+    BOUNTY_THRESHOLD = float(os.getenv("AVADHI_BOUNTY_THRESHOLD", "5000"))
+except ValueError:
+    BOUNTY_THRESHOLD = 5000.0
+
+# Effective model used when no per-task override is active (CLI / scan commands)
+_effective_model = MODEL or DEFAULT_MODEL
 # Validate model name has a reasonable format
 _KNOWN_PREFIXES = ("claude", "anthropic", "gpt-", "o1", "o3")
-if MODEL and not any(MODEL.startswith(p) for p in _KNOWN_PREFIXES):
+if _effective_model and not any(_effective_model.startswith(p) for p in _KNOWN_PREFIXES):
     warnings.warn(
-        f"AVADHI_MODEL='{MODEL}' doesn't match known providers ({', '.join(_KNOWN_PREFIXES)}). "
+        f"Model '{_effective_model}' doesn't match known providers ({', '.join(_KNOWN_PREFIXES)}). "
         "If this is intentional, ignore this warning.",
         RuntimeWarning,
         stacklevel=1,
     )
 
 # ── Rate Limits ──────────────────────────────────────────────────────────────
-IS_OPENAI = not (MODEL.startswith("claude") or MODEL.startswith("anthropic"))
+# We now maintain two independent sets of limits since both providers may run concurrently.
+# IS_OPENAI refers to the *default* (CLI) model for backwards-compat concurrency settings.
+IS_OPENAI = not (_effective_model.startswith("claude") or _effective_model.startswith("anthropic"))
 
+# OpenAI limits (Tier 5 defaults; tune via env vars)
+OPENAI_RPM  = int(os.getenv("AVADHI_OPENAI_RPM",  "500"))
+OPENAI_ITPM = int(os.getenv("AVADHI_OPENAI_ITPM", "500000"))
+OPENAI_OTPM = int(os.getenv("AVADHI_OPENAI_OTPM", "150000"))
+
+# Anthropic limits (Tier 1 defaults; tune via env vars)
+ANTHROPIC_RPM  = int(os.getenv("AVADHI_ANTHROPIC_RPM",  "50"))
+ANTHROPIC_ITPM = int(os.getenv("AVADHI_ANTHROPIC_ITPM", "30000"))
+ANTHROPIC_OTPM = int(os.getenv("AVADHI_ANTHROPIC_OTPM", "8000"))
+
+# Legacy single-limiter config (kept for backwards compat)
 if IS_OPENAI:
-    _def_rpm, _def_itpm, _def_otpm = 500, 500_000, 150_000
+    _def_rpm, _def_itpm, _def_otpm = OPENAI_RPM, OPENAI_ITPM, OPENAI_OTPM
 else:
-    # Anthropic Tier 1: 50 RPM, 30,000 ITPM, 8,000 OTPM
-    _def_rpm, _def_itpm, _def_otpm = 50, 30_000, 8_000
+    _def_rpm, _def_itpm, _def_otpm = ANTHROPIC_RPM, ANTHROPIC_ITPM, ANTHROPIC_OTPM
 
 try:
     RATE_LIMIT_RPM = int(os.getenv("AVADHI_RPM", _def_rpm))

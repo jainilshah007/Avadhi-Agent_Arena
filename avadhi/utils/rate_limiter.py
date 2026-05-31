@@ -163,13 +163,36 @@ class SlidingWindowRateLimiter:
         }
 
 
-# ── Singleton shared across the entire process ────────────────────────────────
-# Reads from config.py so env vars (AVADHI_RPM, AVADHI_ITPM, AVADHI_OTPM)
-# are the single place to tune limits for a different API tier.
-from avadhi.config import RATE_LIMIT_RPM, RATE_LIMIT_ITPM, RATE_LIMIT_OTPM  # noqa: E402
+# ── Dual singletons — one per provider ───────────────────────────────────────
+from avadhi.config import (  # noqa: E402
+    RATE_LIMIT_RPM, RATE_LIMIT_ITPM, RATE_LIMIT_OTPM,
+    OPENAI_RPM, OPENAI_ITPM, OPENAI_OTPM,
+    ANTHROPIC_RPM, ANTHROPIC_ITPM, ANTHROPIC_OTPM,
+)
 
+# Legacy limiter (used by backwards-compat callers)
 rate_limiter = SlidingWindowRateLimiter(
     rpm_limit=RATE_LIMIT_RPM,
     itpm_limit=RATE_LIMIT_ITPM,
     otpm_limit=RATE_LIMIT_OTPM,
 )
+
+# Dedicated per-provider limiters (used by the new dynamic model system)
+openai_rate_limiter = SlidingWindowRateLimiter(
+    rpm_limit=OPENAI_RPM,
+    itpm_limit=OPENAI_ITPM,
+    otpm_limit=OPENAI_OTPM,
+)
+
+anthropic_rate_limiter = SlidingWindowRateLimiter(
+    rpm_limit=ANTHROPIC_RPM,
+    itpm_limit=ANTHROPIC_ITPM,
+    otpm_limit=ANTHROPIC_OTPM,
+)
+
+
+def get_rate_limiter(model_name: str) -> SlidingWindowRateLimiter:
+    """Return the correct rate limiter for the given model name."""
+    if model_name.startswith("claude") or model_name.startswith("anthropic"):
+        return anthropic_rate_limiter
+    return openai_rate_limiter

@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import io
 import logging
+import re
 import shutil
 import tempfile
 import zipfile
@@ -30,6 +31,42 @@ def _get_api_key() -> str:
     if not key:
         raise RuntimeError("AGENTARENA_API_KEY not set")
     return key
+
+
+def _determine_task_model(task_details: TaskDetails) -> str:
+    """
+    Select the appropriate LLM model based on task bounty.
+
+    High-bounty (>= BOUNTY_THRESHOLD) → PREMIUM_MODEL (Claude Opus)
+    Low-bounty or test tasks           → DEFAULT_MODEL (GPT-4o)
+    If AVADHI_MODEL env var is set     → always use that (backwards compat)
+    """
+    from avadhi.config import MODEL, DEFAULT_MODEL, PREMIUM_MODEL, BOUNTY_THRESHOLD
+
+    # If user forced a specific model globally, always use it
+    if MODEL:
+        return MODEL
+
+    # Parse bounty: may be "$5,000", "5000", "5000 USDC", None, etc.
+    bounty_raw = str(task_details.bounty or "0")
+    digits = re.sub(r"[^\d.]", "", bounty_raw)
+    try:
+        bounty_value = float(digits) if digits else 0.0
+    except ValueError:
+        bounty_value = 0.0
+
+    if bounty_value >= BOUNTY_THRESHOLD:
+        logger.info(
+            "Task bounty $%.0f >= threshold $%.0f → using premium model '%s'",
+            bounty_value, BOUNTY_THRESHOLD, PREMIUM_MODEL,
+        )
+        return PREMIUM_MODEL
+
+    logger.info(
+        "Task bounty $%.0f < threshold $%.0f → using default model '%s'",
+        bounty_value, BOUNTY_THRESHOLD, DEFAULT_MODEL,
+    )
+    return DEFAULT_MODEL
 
 
 def download_repository(url: str, dest: Path) -> Path:
@@ -141,7 +178,12 @@ def process_task(payload: WebhookPayload) -> None:
     try:
         # Step 1: Fetch task details
         task_details = fetch_task_details(payload.task_details_url)
-        logger.info("Task: %s — %s", task_details.title, task_details.description[:200])
+        logger.info("Task: %s — %s", task_details.title, str(task_details.description)[:200])
+
+        # Step 1b: Select LLM model based on bounty (sets thread-local for all subsequent calls)
+        from avadhi.utils.llm import set_thread_model
+        chosen_model = _determine_task_model(task_details)
+        set_thread_model(chosen_model)
 
         # Step 2: Download repository
         tmp_dir = Path(tempfile.mkdtemp(prefix=f"avadhi_arena_{task_id}_"))

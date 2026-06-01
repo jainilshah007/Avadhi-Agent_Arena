@@ -72,7 +72,7 @@ def index():
         "status": "running",
         "service": "Avadhi Agent Arena Webhook Server",
         "health_check": "/health",
-        "webhook_endpoint": "/webhook/audit"
+        "webhook_endpoint": "/webhook/audit",
     }
 
 
@@ -82,14 +82,10 @@ def health():
     return {"status": "ok", "active_tasks": active}
 
 
-@app.post("/webhook/audit")
-def webhook_audit(
-    payload: WebhookPayload,
-    authorization: str = Header(...),
-):
+def _handle_webhook(payload: WebhookPayload, authorization: str) -> dict:
     """
-    Receive audit task from Agent Arena.
-    Validates auth token, then dispatches the task to a background thread.
+    Core webhook handler logic, shared by POST / and POST /webhook/audit.
+    Validates auth, handles test pings, and dispatches real tasks.
     """
     expected = f"token {_get_webhook_token()}"
     if authorization != expected:
@@ -98,8 +94,8 @@ def webhook_audit(
     task_id = payload.task_id
     logger.info("Received webhook for task %s", task_id)
 
-    # Handle ping / test requests
-    if not task_id or task_id.lower() in ("test", "ping", "test-task", "dummy") or not payload.task_repository_url:
+    # Handle ping / test requests (no repo URL = test ping)
+    if not task_id or task_id.upper() in ("TEST", "TESTTASK", "PING", "DUMMY") or not payload.task_repository_url:
         logger.info("Received test/ping webhook from Agent Arena")
         return {"status": "accepted", "message": "Test webhook connection successful", "task_id": task_id}
 
@@ -121,3 +117,25 @@ def webhook_audit(
 
     logger.info("Task %s dispatched to background thread", task_id)
     return {"status": "accepted", "task_id": task_id}
+
+
+@app.post("/")
+def webhook_root(
+    payload: WebhookPayload,
+    authorization: str = Header(...),
+):
+    """
+    Alias for POST /webhook/audit.
+    Accepts Agent Arena tasks posted to the root URL (misconfigured webhook URL).
+    """
+    logger.info("POST / received — routing to webhook handler")
+    return _handle_webhook(payload, authorization)
+
+
+@app.post("/webhook/audit")
+def webhook_audit(
+    payload: WebhookPayload,
+    authorization: str = Header(...),
+):
+    """Receive audit task from Agent Arena."""
+    return _handle_webhook(payload, authorization)

@@ -66,7 +66,7 @@ def _get_webhook_token() -> str:
     return token
 
 
-@app.get("/")
+@app.api_route("/", methods=["GET", "HEAD"])
 def index():
     return {
         "status": "running",
@@ -89,6 +89,13 @@ def _handle_webhook(payload: WebhookPayload, authorization: str) -> dict:
     """
     expected = f"token {_get_webhook_token()}"
     if authorization != expected:
+        # Log masked tokens to help diagnose mismatches without exposing secrets
+        got_masked = authorization[:12] + "..." if len(authorization) > 12 else authorization
+        exp_masked = expected[:12] + "..." if len(expected) > 12 else expected
+        logger.error(
+            "401 Unauthorized — token mismatch. Got: '%s', Expected prefix: '%s'",
+            got_masked, exp_masked,
+        )
         raise HTTPException(status_code=401, detail="Invalid authorization token")
 
     task_id = payload.task_id
